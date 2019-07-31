@@ -5,15 +5,16 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Paint;
 import android.os.Bundle;
-import androidx.core.content.ContextCompat;
-import androidx.appcompat.app.AlertDialog;
-import androidx.cardview.widget.CardView;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.squareup.otto.Subscribe;
 
@@ -21,12 +22,11 @@ import info.nightscout.androidaps.MainApp;
 import info.nightscout.androidaps.R;
 import info.nightscout.androidaps.data.Intervals;
 import info.nightscout.androidaps.data.IobTotal;
+import info.nightscout.androidaps.database.BlockingAppRepository;
+import info.nightscout.androidaps.database.transactions.InvalidateExtendedBolusTransaction;
 import info.nightscout.androidaps.db.ExtendedBolus;
-import info.nightscout.androidaps.db.Source;
 import info.nightscout.androidaps.events.EventExtendedBolusChange;
 import info.nightscout.androidaps.plugins.common.SubscriberFragment;
-import info.nightscout.androidaps.plugins.general.nsclient.NSUpload;
-import info.nightscout.androidaps.plugins.general.nsclient.UploadQueue;
 import info.nightscout.androidaps.plugins.iob.iobCobCalculator.events.EventAutosensCalculationFinished;
 import info.nightscout.androidaps.plugins.treatments.TreatmentsPlugin;
 import info.nightscout.androidaps.utils.DateUtil;
@@ -56,8 +56,8 @@ public class TreatmentsExtendedBolusesFragment extends SubscriberFragment {
         @Override
         public void onBindViewHolder(ExtendedBolusesViewHolder holder, int position) {
             ExtendedBolus extendedBolus = extendedBolusList.getReversed(position);
-            holder.ph.setVisibility(extendedBolus.source == Source.PUMP ? View.VISIBLE : View.GONE);
-            holder.ns.setVisibility(NSUpload.isIdValid(extendedBolus._id) ? View.VISIBLE : View.GONE);
+            holder.ph.setVisibility(extendedBolus.backing.getInterfaceIDs().getPumpType() != null ? View.VISIBLE : View.GONE);
+            holder.ns.setVisibility(extendedBolus.backing.getInterfaceIDs().getNightscoutId() != null ? View.VISIBLE : View.GONE);
             if (extendedBolus.isEndingEvent()) {
                 holder.date.setText(DateUtil.dateAndTimeString(extendedBolus.date));
                 holder.duration.setText(MainApp.gs(R.string.cancel));
@@ -141,13 +141,7 @@ public class TreatmentsExtendedBolusesFragment extends SubscriberFragment {
                         builder.setMessage(MainApp.gs(R.string.removerecord) + "\n" + DateUtil.dateAndTimeString(extendedBolus.date));
                         builder.setPositiveButton(MainApp.gs(R.string.ok), new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int id) {
-                                final String _id = extendedBolus._id;
-                                if (NSUpload.isIdValid(_id)) {
-                                    NSUpload.removeCareportalEntryFromNS(_id);
-                                } else {
-                                    UploadQueue.removeID("dbAdd", _id);
-                                }
-                                MainApp.getDbHelper().delete(extendedBolus);
+                                BlockingAppRepository.INSTANCE.runTransaction(new InvalidateExtendedBolusTransaction(extendedBolus.backing.getId()));
                             }
                         });
                         builder.setNegativeButton(MainApp.gs(R.string.cancel), null);

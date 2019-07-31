@@ -6,17 +6,18 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Paint;
 import android.os.Bundle;
-import androidx.fragment.app.FragmentManager;
-import androidx.core.content.ContextCompat;
-import androidx.appcompat.app.AlertDialog;
-import androidx.cardview.widget.CardView;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.FragmentManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.squareup.otto.Subscribe;
 
@@ -27,18 +28,17 @@ import java.util.List;
 
 import info.nightscout.androidaps.MainApp;
 import info.nightscout.androidaps.R;
+import info.nightscout.androidaps.data.Profile;
+import info.nightscout.androidaps.database.BlockingAppRepository;
+import info.nightscout.androidaps.database.transactions.InvalidateProfileSwitchTransaction;
+import info.nightscout.androidaps.db.ProfileSwitch;
 import info.nightscout.androidaps.events.EventProfileNeedsUpdate;
 import info.nightscout.androidaps.logging.L;
+import info.nightscout.androidaps.plugins.common.SubscriberFragment;
 import info.nightscout.androidaps.plugins.configBuilder.ProfileFunctions;
 import info.nightscout.androidaps.services.Intents;
-import info.nightscout.androidaps.data.Profile;
-import info.nightscout.androidaps.db.ProfileSwitch;
-import info.nightscout.androidaps.db.Source;
-import info.nightscout.androidaps.plugins.common.SubscriberFragment;
-import info.nightscout.androidaps.plugins.general.nsclient.UploadQueue;
 import info.nightscout.androidaps.utils.DateUtil;
 import info.nightscout.androidaps.utils.DecimalFormatter;
-import info.nightscout.androidaps.plugins.general.nsclient.NSUpload;
 import info.nightscout.androidaps.utils.SP;
 
 /**
@@ -73,8 +73,8 @@ public class TreatmentsProfileSwitchFragment extends SubscriberFragment implemen
             Profile profile = ProfileFunctions.getInstance().getProfile();
             if (profile == null) return;
             ProfileSwitch profileSwitch = profileSwitchList.get(position);
-            holder.ph.setVisibility(profileSwitch.source == Source.PUMP ? View.VISIBLE : View.GONE);
-            holder.ns.setVisibility(NSUpload.isIdValid(profileSwitch._id) ? View.VISIBLE : View.GONE);
+            holder.ph.setVisibility(profileSwitch.backing.getInterfaceIDs().getPumpType() != null ? View.VISIBLE : View.GONE);
+            holder.ns.setVisibility(profileSwitch.backing.getInterfaceIDs().getNightscoutId() != null ? View.VISIBLE : View.GONE);
 
             holder.date.setText(DateUtil.dateAndTimeString(profileSwitch.date));
             if (!profileSwitch.isEndingEvent()) {
@@ -143,17 +143,8 @@ public class TreatmentsProfileSwitchFragment extends SubscriberFragment implemen
                         AlertDialog.Builder builder = new AlertDialog.Builder(context);
                         builder.setTitle(MainApp.gs(R.string.confirmation));
                         builder.setMessage(MainApp.gs(R.string.removerecord) + "\n" + DateUtil.dateAndTimeString(profileSwitch.date));
-                        builder.setPositiveButton(MainApp.gs(R.string.ok), new DialogInterface.OnClickListener() {
-                            public void onClick(DialogInterface dialog, int id) {
-                                final String _id = profileSwitch._id;
-                                if (NSUpload.isIdValid(_id)) {
-                                    NSUpload.removeCareportalEntryFromNS(_id);
-                                } else {
-                                    UploadQueue.removeID("dbAdd", _id);
-                                }
-                                MainApp.getDbHelper().delete(profileSwitch);
-                            }
-                        });
+                        builder.setPositiveButton(MainApp.gs(R.string.ok), (dialog, id) ->
+                                BlockingAppRepository.INSTANCE.runTransaction(new InvalidateProfileSwitchTransaction(profileSwitch.backing.getId())));
                         builder.setNegativeButton(MainApp.gs(R.string.cancel), null);
                         builder.show();
                         break;
@@ -204,7 +195,7 @@ public class TreatmentsProfileSwitchFragment extends SubscriberFragment implemen
                 builder.setMessage(MainApp.gs(R.string.refresheventsfromnightscout) + "?");
                 builder.setPositiveButton(MainApp.gs(R.string.ok), new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
-                        MainApp.getDbHelper().resetProfileSwitch();
+                        //MainApp.getDbHelper().resetProfileSwitch();
                         Intent restartNSClient = new Intent(Intents.ACTION_RESTART);
                         MainApp.instance().getApplicationContext().sendBroadcast(restartNSClient);
                     }

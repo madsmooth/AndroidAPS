@@ -6,11 +6,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
-import androidx.annotation.IdRes;
-
 import info.nightscout.androidaps.MainApp;
-import info.nightscout.androidaps.plugins.general.overview.notifications.Notification;
 import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotification;
+import info.nightscout.androidaps.plugins.general.overview.notifications.Notification;
 
 
 public class ToastUtils {

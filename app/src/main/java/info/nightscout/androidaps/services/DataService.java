@@ -16,15 +16,16 @@ import info.nightscout.androidaps.R;
 import info.nightscout.androidaps.db.CareportalEvent;
 import info.nightscout.androidaps.events.EventNsFood;
 import info.nightscout.androidaps.events.EventNsTreatment;
+import info.nightscout.androidaps.logging.BundleLogger;
 import info.nightscout.androidaps.logging.L;
 import info.nightscout.androidaps.plugins.general.nsclient.data.NSDeviceStatus;
 import info.nightscout.androidaps.plugins.general.nsclient.data.NSMbg;
 import info.nightscout.androidaps.plugins.general.nsclient.data.NSSettingsStatus;
 import info.nightscout.androidaps.plugins.general.overview.events.EventNewNotification;
 import info.nightscout.androidaps.plugins.general.overview.notifications.Notification;
+import info.nightscout.androidaps.plugins.general.smsCommunicator.SmsCommunicatorPlugin;
 import info.nightscout.androidaps.plugins.profile.ns.NSProfilePlugin;
 import info.nightscout.androidaps.plugins.pump.danaR.activities.DanaRNSHistorySync;
-import info.nightscout.androidaps.plugins.general.smsCommunicator.SmsCommunicatorPlugin;
 import info.nightscout.androidaps.plugins.source.SourceDexcomPlugin;
 import info.nightscout.androidaps.plugins.source.SourceEversensePlugin;
 import info.nightscout.androidaps.plugins.source.SourceGlimpPlugin;
@@ -34,7 +35,6 @@ import info.nightscout.androidaps.plugins.source.SourcePoctechPlugin;
 import info.nightscout.androidaps.plugins.source.SourceTomatoPlugin;
 import info.nightscout.androidaps.plugins.source.SourceXdripPlugin;
 import info.nightscout.androidaps.receivers.DataReceiver;
-import info.nightscout.androidaps.logging.BundleLogger;
 import info.nightscout.androidaps.utils.JsonHelper;
 import info.nightscout.androidaps.utils.SP;
 
@@ -63,21 +63,21 @@ public class DataService extends IntentService {
 
         final String action = intent.getAction();
         if (Intents.ACTION_NEW_BG_ESTIMATE.equals(action)) {
-            SourceXdripPlugin.getPlugin().handleNewData(intent);
+            SourceXdripPlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.NS_EMULATOR.equals(action)) {
-            SourceMM640gPlugin.getPlugin().handleNewData(intent);
+            SourceMM640gPlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.GLIMP_BG.equals(action)) {
-            SourceGlimpPlugin.getPlugin().handleNewData(intent);
+            SourceGlimpPlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.DEXCOM_BG.equals(action)) {
             SourceDexcomPlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.POCTECH_BG.equals(action)) {
-            SourcePoctechPlugin.getPlugin().handleNewData(intent);
+            SourcePoctechPlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.TOMATO_BG.equals(action)) {
-            SourceTomatoPlugin.getPlugin().handleNewData(intent);
+            SourceTomatoPlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.EVERSENSE_BG.equals(action)) {
-            SourceEversensePlugin.getPlugin().handleNewData(intent);
+            SourceEversensePlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.ACTION_NEW_SGV.equals(action)) {
-            SourceNSClientPlugin.getPlugin().handleNewData(intent);
+            SourceNSClientPlugin.INSTANCE.handleNewData(intent);
         } else if (Intents.ACTION_NEW_PROFILE.equals(action)) {
             // always handle Profile if NSProfile is enabled without looking at nsUploadOnly
             NSProfilePlugin.getPlugin().handleNewData(intent);
@@ -201,11 +201,11 @@ public class DataService extends IntentService {
         MainApp.bus().post(evtTreatment);
         // old DB model
         String _id = JsonHelper.safeGetString(json, "_id");
-        MainApp.getDbHelper().deleteTempTargetById(_id);
-        MainApp.getDbHelper().deleteTempBasalById(_id);
-        MainApp.getDbHelper().deleteExtendedBolusById(_id);
-        MainApp.getDbHelper().deleteCareportalEventById(_id);
-        MainApp.getDbHelper().deleteProfileSwitchById(_id);
+        //MainApp.getDbHelper().deleteTempTargetById(_id);
+        //MainApp.getDbHelper().deleteTempBasalById(_id);
+        //MainApp.getDbHelper().deleteExtendedBolusById(_id);
+        //MainApp.getDbHelper().deleteCareportalEventById(_id);
+        //MainApp.getDbHelper().deleteProfileSwitchById(_id);
     }
 
     private void handleTreatmentFromNS(JSONObject json, Intent intent) {
@@ -225,13 +225,13 @@ public class DataService extends IntentService {
             // old DB model
             MainApp.getDbHelper().updateDanaRHistoryRecordId(json);
         } else if (eventType.equals(CareportalEvent.TEMPORARYTARGET)) {
-            MainApp.getDbHelper().createTemptargetFromJsonIfNotExists(json);
+            //MainApp.getDbHelper().createTemptargetFromJsonIfNotExists(json);
         } else if (eventType.equals(CareportalEvent.TEMPBASAL)) {
-            MainApp.getDbHelper().createTempBasalFromJsonIfNotExists(json);
+            //MainApp.getDbHelper().createTempBasalFromJsonIfNotExists(json);
         } else if (eventType.equals(CareportalEvent.COMBOBOLUS)) {
-            MainApp.getDbHelper().createExtendedBolusFromJsonIfNotExists(json);
+            //MainApp.getDbHelper().createExtendedBolusFromJsonIfNotExists(json);
         } else if (eventType.equals(CareportalEvent.PROFILESWITCH)) {
-            MainApp.getDbHelper().createProfileSwitchFromJsonIfNotExists(json);
+            //MainApp.getDbHelper().createProfileSwitchFromJsonIfNotExists(json);
         } else if (eventType.equals(CareportalEvent.SITECHANGE) ||
                 eventType.equals(CareportalEvent.INSULINCHANGE) ||
                 eventType.equals(CareportalEvent.SENSORCHANGE) ||
@@ -243,7 +243,7 @@ public class DataService extends IntentService {
                 eventType.equals(CareportalEvent.EXERCISE) ||
                 eventType.equals(CareportalEvent.OPENAPSOFFLINE) ||
                 eventType.equals(CareportalEvent.PUMPBATTERYCHANGE)) {
-            MainApp.getDbHelper().createCareportalEventFromJsonIfNotExists(json);
+            //MainApp.getDbHelper().createCareportalEventFromJsonIfNotExists(json);
         }
 
         if (eventType.equals(CareportalEvent.ANNOUNCEMENT)) {
@@ -262,7 +262,7 @@ public class DataService extends IntentService {
     private void storeMbg(JSONObject mbgJson) {
         NSMbg nsMbg = new NSMbg(mbgJson);
         CareportalEvent careportalEvent = new CareportalEvent(nsMbg);
-        MainApp.getDbHelper().createOrUpdate(careportalEvent);
+        //MainApp.getDbHelper().createOrUpdate(careportalEvent);
         if (L.isEnabled(L.DATASERVICE))
             log.debug("Adding/Updating new MBG: " + careportalEvent.toString());
     }

@@ -1,19 +1,20 @@
 package info.nightscout.androidaps.interfaces;
 
 import android.os.SystemClock;
+
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.FragmentActivity;
 
-import info.nightscout.androidaps.R;
-import info.nightscout.androidaps.utils.SP;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import info.nightscout.androidaps.MainApp;
+import info.nightscout.androidaps.R;
 import info.nightscout.androidaps.logging.L;
 import info.nightscout.androidaps.plugins.configBuilder.ConfigBuilderFragment;
 import info.nightscout.androidaps.plugins.configBuilder.ConfigBuilderPlugin;
 import info.nightscout.androidaps.queue.CommandQueue;
+import info.nightscout.androidaps.utils.SP;
 
 /**
  * Created by mike on 09.06.2016.

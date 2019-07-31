@@ -1,11 +1,10 @@
 package info.nightscout.androidaps.plugins.pump.combo;
 
-import android.content.DialogInterface;
 import android.os.SystemClock;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
-import androidx.appcompat.app.AlertDialog;
 
 import org.json.JSONObject;
 import org.slf4j.Logger;

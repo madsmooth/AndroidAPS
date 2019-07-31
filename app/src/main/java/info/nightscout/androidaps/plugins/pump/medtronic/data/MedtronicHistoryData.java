@@ -38,7 +38,6 @@ import info.nightscout.androidaps.plugins.pump.medtronic.data.dto.BasalProfile;
 import info.nightscout.androidaps.plugins.pump.medtronic.data.dto.BolusDTO;
 import info.nightscout.androidaps.plugins.pump.medtronic.data.dto.BolusWizardDTO;
 import info.nightscout.androidaps.plugins.pump.medtronic.data.dto.ClockDTO;
-import info.nightscout.androidaps.plugins.pump.medtronic.data.dto.DailyTotalsDTO;
 import info.nightscout.androidaps.plugins.pump.medtronic.data.dto.TempBasalPair;
 import info.nightscout.androidaps.plugins.pump.medtronic.data.dto.TempBasalProcessDTO;
 import info.nightscout.androidaps.plugins.pump.medtronic.driver.MedtronicPumpStatus;
@@ -455,7 +454,8 @@ public class MedtronicHistoryData {
 
 
     private void processTDDs(List<PumpHistoryEntry> tddsIn) {
-
+        //TODO: Fix Medtronic Driver
+        /*
         List<PumpHistoryEntry> tdds = filterTDDs(tddsIn);
 
         if (isLogEnabled())
@@ -492,6 +492,7 @@ public class MedtronicHistoryData {
                 }
             }
         }
+        */
     }
 
 
@@ -623,8 +624,8 @@ public class MedtronicHistoryData {
                     if (tempBasal != null) {
 
                         tempBasal.durationInMinutes = tempBasalProcessDTO.getDuration();
-
-                        databaseHelper.createOrUpdate(tempBasal);
+                        //TODO: Fix Medtronic driver
+                        //databaseHelper.createOrUpdate(tempBasal);
 
                         if (isLogEnabled())
                             LOG.debug("Edit " + ProcessHistoryRecord.TBR.getDescription() + " - (entryFromDb={}) ", tempBasal);
@@ -673,9 +674,9 @@ public class MedtronicHistoryData {
                 return tbr;
             }
         }
-
-        TemporaryBasal tempBasal = databaseHelper.findTempBasalByPumpId(pumpId);
-        return tempBasal;
+        //TODO: Fix Medtronic driver
+        //TemporaryBasal tempBasal = databaseHelper.findTempBasalByPumpId(pumpId);
+        return null;
     }
 
 
@@ -888,8 +889,8 @@ public class MedtronicHistoryData {
         temporaryBasalDb.isAbsolute = !tbr.isPercent();
 
         treatment.setLinkedObject(temporaryBasalDb);
-
-        databaseHelper.createOrUpdate(temporaryBasalDb);
+        //TODO: Fix Medtronic driver
+        //databaseHelper.createOrUpdate(temporaryBasalDb);
 
         if (isLogEnabled())
             LOG.debug(operation + " - [date={},pumpId={}, rate={} {}, duration={}]", //
@@ -905,8 +906,9 @@ public class MedtronicHistoryData {
     private void processSuspends(List<TempBasalProcessDTO> tempBasalProcessList) {
 
         for (TempBasalProcessDTO tempBasalProcess : tempBasalProcessList) {
-
-            TemporaryBasal tempBasal = databaseHelper.findTempBasalByPumpId(tempBasalProcess.itemOne.getPumpId());
+            //TODO: Fix Medtronic driver
+            //TemporaryBasal tempBasal = databaseHelper.findTempBasalByPumpId(tempBasalProcess.itemOne.getPumpId());
+            TemporaryBasal tempBasal = null;
 
             if (tempBasal == null) {
                 // add
@@ -922,7 +924,8 @@ public class MedtronicHistoryData {
                 tempBasalProcess.itemOne.setLinkedObject(tempBasal);
                 tempBasalProcess.itemTwo.setLinkedObject(tempBasal);
 
-                databaseHelper.createOrUpdate(tempBasal);
+                //TODO: Fix Medtronic driver
+                //databaseHelper.createOrUpdate(tempBasal);
 
             }
         }

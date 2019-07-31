@@ -5,9 +5,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
+
 import androidx.annotation.Nullable;
 import androidx.fragment.app.FragmentActivity;
-import androidx.appcompat.app.AlertDialog;
 
 import com.squareup.otto.Subscribe;
 

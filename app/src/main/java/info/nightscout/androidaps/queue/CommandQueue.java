@@ -3,9 +3,10 @@ package info.nightscout.androidaps.queue;
 import android.content.Context;
 import android.content.Intent;
 import android.os.SystemClock;
-import androidx.appcompat.app.AppCompatActivity;
 import android.text.Html;
 import android.text.Spanned;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

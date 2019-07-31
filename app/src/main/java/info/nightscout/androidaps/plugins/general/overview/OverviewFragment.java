@@ -3,7 +3,6 @@ package info.nightscout.androidaps.plugins.general.overview;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.NotificationManager;
-import androidx.arch.core.util.Function;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -12,14 +11,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentActivity;
-import androidx.fragment.app.FragmentManager;
-import androidx.core.content.res.ResourcesCompat;
-import androidx.appcompat.app.AlertDialog;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.appcompat.widget.PopupMenu;
-import androidx.recyclerview.widget.RecyclerView;
 import android.text.SpannableString;
 import android.text.style.ForegroundColorSpan;
 import android.util.DisplayMetrics;
@@ -33,6 +24,16 @@ import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.PopupMenu;
+import androidx.arch.core.util.Function;
+import androidx.core.content.res.ResourcesCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentActivity;
+import androidx.fragment.app.FragmentManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.jjoe64.graphview.GraphView;
 import com.squareup.otto.Subscribe;
@@ -55,11 +56,13 @@ import info.nightscout.androidaps.R;
 import info.nightscout.androidaps.data.IobTotal;
 import info.nightscout.androidaps.data.Profile;
 import info.nightscout.androidaps.data.QuickWizardEntry;
-import info.nightscout.androidaps.db.BgReading;
+import info.nightscout.androidaps.database.BlockingAppRepository;
+import info.nightscout.androidaps.database.entities.GlucoseValue;
+import info.nightscout.androidaps.database.entities.TemporaryTarget;
+import info.nightscout.androidaps.database.transactions.CancelTemporaryTargetTransaction;
+import info.nightscout.androidaps.database.transactions.InsertTemporaryTargetAndCancelCurrentTransaction;
 import info.nightscout.androidaps.db.CareportalEvent;
-import info.nightscout.androidaps.db.DatabaseHelper;
 import info.nightscout.androidaps.db.ExtendedBolus;
-import info.nightscout.androidaps.db.Source;
 import info.nightscout.androidaps.db.TempTarget;
 import info.nightscout.androidaps.db.TemporaryBasal;
 import info.nightscout.androidaps.events.EventAcceptOpenLoopChange;
@@ -112,14 +115,13 @@ import info.nightscout.androidaps.utils.BolusWizard;
 import info.nightscout.androidaps.utils.DateUtil;
 import info.nightscout.androidaps.utils.DecimalFormatter;
 import info.nightscout.androidaps.utils.DefaultValueHelper;
+import info.nightscout.androidaps.utils.GlucoseValueUtilsKt;
 import info.nightscout.androidaps.utils.OKDialog;
 import info.nightscout.androidaps.utils.Profiler;
 import info.nightscout.androidaps.utils.SP;
 import info.nightscout.androidaps.utils.SingleClickButton;
 import info.nightscout.androidaps.utils.T;
 import info.nightscout.androidaps.utils.ToastUtils;
-
-import static info.nightscout.androidaps.utils.DateUtil.now;
 
 public class OverviewFragment extends Fragment implements View.OnClickListener, View.OnLongClickListener {
     private static Logger log = LoggerFactory.getLogger(L.OVERVIEW);
@@ -638,37 +640,28 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
             pvd.show(manager, "ProfileViewDialog");
         } else if (item.getTitle().equals(MainApp.gs(R.string.eatingsoon))) {
             DefaultValueHelper defHelper = new DefaultValueHelper();
-            double target = defHelper.determineEatingSoonTT(profile.getUnits());
-            TempTarget tempTarget = new TempTarget()
-                    .date(System.currentTimeMillis())
-                    .duration(defHelper.determineEatingSoonTTDuration())
-                    .reason(MainApp.gs(R.string.eatingsoon))
-                    .source(Source.USER)
-                    .low(Profile.toMgdl(target, profile.getUnits()))
-                    .high(Profile.toMgdl(target, profile.getUnits()));
-            TreatmentsPlugin.getPlugin().addToHistoryTempTarget(tempTarget);
+            BlockingAppRepository.INSTANCE.runTransaction(new InsertTemporaryTargetAndCancelCurrentTransaction(
+                    System.currentTimeMillis(),
+                    defHelper.determineEatingSoonTTDuration() * 60000,
+                    TemporaryTarget.Reason.EATING_SOON,
+                    defHelper.determineEatingSoonTT(profile.getUnits())
+            ));
         } else if (item.getTitle().equals(MainApp.gs(R.string.activity))) {
             DefaultValueHelper defHelper = new DefaultValueHelper();
-            double target = defHelper.determineActivityTT(profile.getUnits());
-            TempTarget tempTarget = new TempTarget()
-                    .date(now())
-                    .duration(defHelper.determineActivityTTDuration())
-                    .reason(MainApp.gs(R.string.activity))
-                    .source(Source.USER)
-                    .low(Profile.toMgdl(target, profile.getUnits()))
-                    .high(Profile.toMgdl(target, profile.getUnits()));
-            TreatmentsPlugin.getPlugin().addToHistoryTempTarget(tempTarget);
+            BlockingAppRepository.INSTANCE.runTransaction(new InsertTemporaryTargetAndCancelCurrentTransaction(
+                    System.currentTimeMillis(),
+                    defHelper.determineActivityTTDuration() * 60000,
+                    TemporaryTarget.Reason.EATING_SOON,
+                    defHelper.determineActivityTT(profile.getUnits())
+            ));
         } else if (item.getTitle().equals(MainApp.gs(R.string.hypo))) {
             DefaultValueHelper defHelper = new DefaultValueHelper();
-            double target = defHelper.determineHypoTT(profile.getUnits());
-            TempTarget tempTarget = new TempTarget()
-                    .date(now())
-                    .duration(defHelper.determineHypoTTDuration())
-                    .reason(MainApp.gs(R.string.hypo))
-                    .source(Source.USER)
-                    .low(Profile.toMgdl(target, profile.getUnits()))
-                    .high(Profile.toMgdl(target, profile.getUnits()));
-            TreatmentsPlugin.getPlugin().addToHistoryTempTarget(tempTarget);
+            BlockingAppRepository.INSTANCE.runTransaction(new InsertTemporaryTargetAndCancelCurrentTransaction(
+                    System.currentTimeMillis(),
+                    defHelper.determineHypoTTDuration() * 60000,
+                    TemporaryTarget.Reason.EATING_SOON,
+                    defHelper.determineHypoTT(profile.getUnits())
+            ));
         } else if (item.getTitle().equals(MainApp.gs(R.string.custom))) {
             NewNSTreatmentDialog newTTDialog = new NewNSTreatmentDialog();
             final OptionsToShow temptarget = CareportalFragment.TEMPTARGET;
@@ -676,13 +669,10 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
             newTTDialog.setOptions(temptarget, R.string.careportal_temporarytarget);
             newTTDialog.show(getFragmentManager(), "NewNSTreatmentDialog");
         } else if (item.getTitle().equals(MainApp.gs(R.string.cancel))) {
-            TempTarget tempTarget = new TempTarget()
-                    .source(Source.USER)
-                    .date(now())
-                    .duration(0)
-                    .low(0)
-                    .high(0);
-            TreatmentsPlugin.getPlugin().addToHistoryTempTarget(tempTarget);
+            try {
+                BlockingAppRepository.INSTANCE.runTransaction(new CancelTemporaryTargetTransaction());
+            } catch (IllegalStateException ignored) {
+            }
         }
 
         return super.onContextItemSelected(item);
@@ -690,7 +680,7 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
 
     @Override
     public void onClick(View v) {
-        boolean xdrip = SourceXdripPlugin.getPlugin().isEnabled(PluginType.BGSOURCE);
+        boolean xdrip = SourceXdripPlugin.INSTANCE.isEnabled(PluginType.BGSOURCE);
         boolean dexcom = SourceDexcomPlugin.INSTANCE.isEnabled(PluginType.BGSOURCE);
         String units = ProfileFunctions.getInstance().getProfileUnits();
 
@@ -814,7 +804,7 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
     }
 
     void onClickQuickwizard() {
-        final BgReading actualBg = DatabaseHelper.actualBg();
+        final GlucoseValue actualBg = BlockingAppRepository.INSTANCE.getLastRecentGlucoseValue();
         final Profile profile = ProfileFunctions.getInstance().getProfile();
         final String profileName = ProfileFunctions.getInstance().getProfileName();
         final PumpInterface pump = ConfigBuilderPlugin.getPlugin().getActivePump();
@@ -1013,8 +1003,8 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
         loopStatusLayout.setVisibility(View.VISIBLE);
 
         CareportalFragment.updateAge(getActivity(), sage, iage, cage, pbage);
-        BgReading actualBG = DatabaseHelper.actualBg();
-        BgReading lastBG = DatabaseHelper.lastBg();
+        GlucoseValue actualBG = BlockingAppRepository.INSTANCE.getLastRecentGlucoseValue();
+        GlucoseValue lastBG = BlockingAppRepository.INSTANCE.getLastGlucoseValue();
 
         final PumpInterface pump = ConfigBuilderPlugin.getPlugin().getActivePump();
 
@@ -1029,12 +1019,12 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
         // **** BG value ****
         if (lastBG != null) {
             int color = MainApp.gc(R.color.inrange);
-            if (lastBG.valueToUnits(units) < lowLine)
+            if (GlucoseValueUtilsKt.valueToUnits(lastBG.getValue(), units) < lowLine)
                 color = MainApp.gc(R.color.low);
-            else if (lastBG.valueToUnits(units) > highLine)
+            else if (GlucoseValueUtilsKt.valueToUnits(lastBG.getValue(), units) > highLine)
                 color = MainApp.gc(R.color.high);
-            bgView.setText(lastBG.valueToUnitsToString(units));
-            arrowView.setText(lastBG.directionToSymbol());
+            bgView.setText(GlucoseValueUtilsKt.valueToUnitsToString(lastBG.getValue(), units));
+            arrowView.setText(GlucoseValueUtilsKt.toSymbol(lastBG.getTrendArrow()));
             bgView.setTextColor(color);
             arrowView.setTextColor(color);
             GlucoseStatus glucoseStatus = GlucoseStatus.getGlucoseStatusData();
@@ -1126,9 +1116,9 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
         }
 
         // **** Calibration & CGM buttons ****
-        boolean xDripIsBgSource = MainApp.getSpecificPlugin(SourceXdripPlugin.class) != null && MainApp.getSpecificPlugin(SourceXdripPlugin.class).isEnabled(PluginType.BGSOURCE);
+        boolean xDripIsBgSource = SourceXdripPlugin.INSTANCE.isEnabled(PluginType.BGSOURCE);
         boolean dexcomIsSource = SourceDexcomPlugin.INSTANCE.isEnabled(PluginType.BGSOURCE);
-        boolean bgAvailable = DatabaseHelper.actualBg() != null;
+        boolean bgAvailable = BlockingAppRepository.INSTANCE.getLastRecentGlucoseValue() != null;
         if (calibrationButton != null) {
             if ((xDripIsBgSource || dexcomIsSource) && bgAvailable && SP.getBoolean(R.string.key_show_calibration_button, true)) {
                 calibrationButton.setVisibility(View.VISIBLE);
@@ -1272,9 +1262,9 @@ public class OverviewFragment extends Fragment implements View.OnClickListener, 
         bgView.setPaintFlags(flag);
 
         if (timeAgoView != null)
-            timeAgoView.setText(DateUtil.minAgo(lastBG.date));
+            timeAgoView.setText(DateUtil.minAgo(lastBG.getTimestamp()));
         if (timeAgoShortView != null)
-            timeAgoShortView.setText("(" + DateUtil.minAgoShort(lastBG.date) + ")");
+            timeAgoShortView.setText("(" + DateUtil.minAgoShort(lastBG.getTimestamp()) + ")");
 
         // iob
         TreatmentsPlugin.getPlugin().updateTotalIOBTreatments();
