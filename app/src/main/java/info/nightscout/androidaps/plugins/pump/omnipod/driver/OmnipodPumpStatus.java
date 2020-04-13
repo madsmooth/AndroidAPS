@@ -1,6 +1,5 @@
 package info.nightscout.androidaps.plugins.pump.omnipod.driver;
 
-import org.jetbrains.annotations.NotNull;
 import org.joda.time.LocalDateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +61,9 @@ public class OmnipodPumpStatus extends PumpStatus {
     public boolean beepTBREnabled = true;
     public boolean podDebuggingOptionsEnabled = false;
     public String podLotNumber = "???";
+    public boolean timeChangeEventEnabled = true;
+
+    public OmnipodDriverState driverState = OmnipodDriverState.NotInitalized;
 
     public OmnipodPumpStatus(PumpDescription pumpDescription) {
         super(pumpDescription);
@@ -110,6 +112,7 @@ public class OmnipodPumpStatus extends PumpStatus {
             this.beepSMBEnabled = SP.getBoolean(OmnipodConst.Prefs.BeepSMBEnabled, true);
             this.beepTBREnabled = SP.getBoolean(OmnipodConst.Prefs.BeepTBREnabled, true);
             this.podDebuggingOptionsEnabled = SP.getBoolean(OmnipodConst.Prefs.PodDebuggingOptionsEnabled, false);
+            this.timeChangeEventEnabled = SP.getBoolean(OmnipodConst.Prefs.TimeChangeEventEnabled, true);
 
             LOG.debug("Beeps [basal={}, bolus={}, SMB={}, TBR={}]", this.beepBasalEnabled, this.beepBolusEnabled, this.beepSMBEnabled, this.beepTBREnabled);
 

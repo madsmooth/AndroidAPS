@@ -22,6 +22,7 @@ import info.nightscout.androidaps.R;
 import info.nightscout.androidaps.interfaces.PluginType;
 import info.nightscout.androidaps.logging.L;
 import info.nightscout.androidaps.plugins.bus.RxBus;
+import info.nightscout.androidaps.plugins.pump.common.defs.PumpType;
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.RileyLinkUtil;
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.data.RLHistoryItem;
 import info.nightscout.androidaps.plugins.pump.omnipod.OmnipodPumpPlugin;
@@ -31,6 +32,7 @@ import info.nightscout.androidaps.plugins.pump.omnipod.defs.OmnipodPodType;
 import info.nightscout.androidaps.plugins.pump.omnipod.defs.OmnipodPumpPluginInterface;
 import info.nightscout.androidaps.plugins.pump.omnipod.defs.PodDeviceState;
 import info.nightscout.androidaps.plugins.pump.omnipod.defs.state.PodSessionState;
+import info.nightscout.androidaps.plugins.pump.omnipod.driver.OmnipodDriverState;
 import info.nightscout.androidaps.plugins.pump.omnipod.driver.OmnipodPumpStatus;
 import info.nightscout.androidaps.plugins.pump.omnipod.events.EventOmnipodDeviceStatusChange;
 import info.nightscout.androidaps.plugins.pump.omnipod.service.RileyLinkOmnipodService;
@@ -54,6 +56,8 @@ public class OmnipodUtil extends RileyLinkUtil {
     //private static PodDeviceState podDeviceState;
     private static OmnipodPumpPluginInterface omnipodPumpPlugin;
     private static OmnipodPodType omnipodPodType;
+    private static OmnipodDriverState driverState = OmnipodDriverState.NotInitalized;
+    private static PumpType pumpType;
 
     public static Gson getGsonInstance() {
         return gsonInstance;
@@ -142,11 +146,31 @@ public class OmnipodUtil extends RileyLinkUtil {
 
     public static void displayNotConfiguredDialog(Context context) {
         OKDialog.show(context, MainApp.gs(R.string.combo_warning),
-                MainApp.gs(R.string.medtronic_error_operation_not_possible_no_configuration), null);
+                MainApp.gs(R.string.omnipod_error_operation_not_possible_no_configuration), null);
     }
 
     public static OmnipodPumpStatus getPumpStatus() {
         return omnipodPumpStatus;
+    }
+
+    public static OmnipodDriverState getDriverState() {
+        return OmnipodUtil.driverState;
+    }
+
+    public static void setDriverState(OmnipodDriverState state) {
+        if (OmnipodUtil.driverState == state)
+            return;
+
+        OmnipodUtil.driverState = state;
+
+        // TODO maybe remove
+//        if (OmnipodUtil.omnipodPumpStatus != null) {
+//            OmnipodUtil.omnipodPumpStatus.driverState = state;
+//        }
+//
+//        if (OmnipodUtil.omnipodPumpPlugin != null) {
+//            OmnipodUtil.omnipodPumpPlugin.setDriverState(state);
+//        }
     }
 
     public static void setPumpStatus(OmnipodPumpStatus omnipodPumpStatus) {
@@ -216,4 +240,11 @@ public class OmnipodUtil extends RileyLinkUtil {
     }
 
 
+    public static void setPumpType(PumpType pumpType) {
+        OmnipodUtil.pumpType = pumpType;
+    }
+
+    public static PumpType getPumpType() {
+        return pumpType;
+    }
 }

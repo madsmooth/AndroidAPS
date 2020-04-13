@@ -14,6 +14,7 @@ import info.nightscout.androidaps.events.EventPreferenceChange
 import info.nightscout.androidaps.logging.L
 import info.nightscout.androidaps.plugins.bus.RxBus
 import info.nightscout.androidaps.plugins.configBuilder.ConfigBuilderPlugin
+import info.nightscout.androidaps.plugins.pump.common.defs.PumpType
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.RileyLinkUtil
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.defs.RileyLinkError
 import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.defs.RileyLinkServiceState
@@ -22,11 +23,12 @@ import info.nightscout.androidaps.plugins.pump.common.hw.rileylink.dialog.RileyL
 import info.nightscout.androidaps.plugins.pump.omnipod.defs.OmnipodStatusRequest
 import info.nightscout.androidaps.plugins.pump.omnipod.defs.PodDeviceState
 import info.nightscout.androidaps.plugins.pump.omnipod.dialogs.PodManagementActivity
+import info.nightscout.androidaps.plugins.pump.omnipod.driver.OmnipodDriverState
+import info.nightscout.androidaps.plugins.pump.omnipod.driver.OmnipodPumpStatus
+import info.nightscout.androidaps.plugins.pump.omnipod.events.EventOmnipodAcknowledgeAlertsChanged
 import info.nightscout.androidaps.plugins.pump.omnipod.events.EventOmnipodDeviceStatusChange
 import info.nightscout.androidaps.plugins.pump.omnipod.events.EventOmnipodPumpValuesChanged
 import info.nightscout.androidaps.plugins.pump.omnipod.events.EventOmnipodRefreshButtonState
-import info.nightscout.androidaps.plugins.pump.omnipod.driver.OmnipodPumpStatus
-import info.nightscout.androidaps.plugins.pump.omnipod.events.EventOmnipodAcknowledgeAlertsChanged
 import info.nightscout.androidaps.plugins.pump.omnipod.util.OmnipodConst
 import info.nightscout.androidaps.plugins.pump.omnipod.util.OmnipodUtil
 import info.nightscout.androidaps.plugins.treatments.TreatmentsPlugin
@@ -132,6 +134,8 @@ class OmnipodFragment : Fragment() {
             }
         }
 
+        omnipod_lastconnection.setTextColor(Color.WHITE)
+
         setVisibilityOfPodDebugButton()
 
         updateGUI()
@@ -214,20 +218,28 @@ class OmnipodFragment : Fragment() {
                     MainApp.gs(it.getResourceId(RileyLinkTargetDevice.Omnipod))
                 } ?: "-"
 
-        if (pumpStatus.podSessionState == null) {
+        val driverState = OmnipodUtil.getDriverState();
+
+        LOG.info("getDriverState: [driverState={}]", driverState)
+
+        if (driverState == OmnipodDriverState.NotInitalized) {
+            omnipod_pod_address.text = MainApp.gs(R.string.omnipod_pod_name_no_info)
+            omnipod_pod_expiry.text = "-"
+            omnipod_pod_status.text = MainApp.gs(R.string.omnipod_pod_not_initalized)
+            pumpStatus.podAvailable = false
+            pumpStatus.podNumber == null
+        } else if (driverState == OmnipodDriverState.Initalized_NoPod) {
             omnipod_pod_address.text = MainApp.gs(R.string.omnipod_pod_name_no_info)
             omnipod_pod_expiry.text = "-"
             omnipod_pod_status.text = MainApp.gs(R.string.omnipod_pod_no_pod_connected)
             pumpStatus.podAvailable = false
             pumpStatus.podNumber == null
         } else {
-            //podAvailable = true
             pumpStatus.podLotNumber = "" + pumpStatus.podSessionState.lot
             pumpStatus.podAvailable = true
             omnipod_pod_address.text = pumpStatus.podSessionState.address.toString()
             omnipod_pod_expiry.text = pumpStatus.podSessionState.expiryDateAsString
             pumpStatus.podNumber = pumpStatus.podSessionState.address.toString()
-
 
             //pumpStatus.podSessionState = checkStatusSet(pumpStatus.podSessionState,
             //        OmnipodUtil.getPodSessionState()) as PodSessionState?
@@ -328,18 +340,24 @@ class OmnipodFragment : Fragment() {
     fun updateGUI() {
         val plugin = OmnipodPumpPlugin.getPlugin()
         val pumpStatus = OmnipodUtil.getPumpStatus()
+        var pumpType = OmnipodUtil.getPumpType()
+
+        if (pumpType==null) {
+            LOG.warn("PumpType was not set, reseting to Omnipod.")
+            pumpType = PumpType.Insulet_Omnipod;
+        }
 
         setDeviceStatus()
 
         if (pumpStatus.podAvailable) {
-        // last connection
+            // last connection
             if (pumpStatus.lastConnection != 0L) {
-                val minAgo = DateUtil.minAgo(pumpStatus.lastConnection)
+                //val minAgo = DateUtil.minAgo(pumpStatus.lastConnection)
                 val min = (System.currentTimeMillis() - pumpStatus.lastConnection) / 1000 / 60
                 if (pumpStatus.lastConnection + 60 * 1000 > System.currentTimeMillis()) {
                     omnipod_lastconnection.setText(R.string.combo_pump_connected_now)
-                    omnipod_lastconnection.setTextColor(Color.WHITE)
-                } else if (pumpStatus.lastConnection + 30 * 60 * 1000 < System.currentTimeMillis()) {
+                    //omnipod_lastconnection.setTextColor(Color.WHITE)
+                } else { //if (pumpStatus.lastConnection + 30 * 60 * 1000 < System.currentTimeMillis()) {
 
                     if (min < 60) {
                         omnipod_lastconnection.text = MainApp.gs(R.string.minago, min)
@@ -354,11 +372,12 @@ class OmnipodFragment : Fragment() {
                         omnipod_lastconnection.text = (MainApp.gq(R.plurals.objective_days, d, d) + " "
                                 + MainApp.gs(R.string.ago))
                     }
-                    omnipod_lastconnection.setTextColor(Color.RED)
-                } else {
-                    omnipod_lastconnection.text = minAgo
-                    omnipod_lastconnection.setTextColor(Color.WHITE)
+                    //omnipod_lastconnection.setTextColor(Color.RED)
                 }
+//                } else {
+//                    omnipod_lastconnection.text = minAgo
+//                    //omnipod_lastconnection.setTextColor(Color.WHITE)
+//                }
             }
 
             // last bolus
@@ -376,14 +395,13 @@ class OmnipodFragment : Fragment() {
                 } else {
                     ago = DateUtil.hourAgo(pumpStatus.lastBolusTime.time)
                 }
-                omnipod_lastbolus.text = MainApp.gs(R.string.combo_last_bolus, bolus, unit, ago)
+                omnipod_lastbolus.text = MainApp.gs(R.string.omnipod_last_bolus, pumpType.determineCorrectBolusSize(bolus), unit, ago)
             } else {
                 omnipod_lastbolus.text = ""
             }
 
             // base basal rate
-
-            omnipod_basabasalrate.text = MainApp.gs(R.string.pump_basebasalrate, plugin.baseBasalRate)
+            omnipod_basabasalrate.text = MainApp.gs(R.string.pump_basebasalrate, pumpType.determineCorrectBasalSize(plugin.baseBasalRate))
 
             omnipod_tempbasal.text = TreatmentsPlugin.getPlugin()
                     .getTempBasalFromHistory(System.currentTimeMillis())?.toStringFull() ?: ""
@@ -415,7 +433,7 @@ class OmnipodFragment : Fragment() {
 
 
     private fun updateAcknowledgeAlerts(pumpStatus: OmnipodPumpStatus) {
-        if (pumpStatus!=null) {
+        if (pumpStatus != null) {
             omnipod_pod_active_alerts_ack.isEnabled = pumpStatus.ackAlertsAvailable
             omnipod_pod_active_alerts.text = pumpStatus.ackAlertsText
         }
